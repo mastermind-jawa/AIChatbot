@@ -17,7 +17,6 @@ from pymongo import MongoClient
 # Load environment variables
 load_dotenv()
 
-# Setup Flask application with explicit absolute paths for serverless compatibility
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(
     __name__,
@@ -25,7 +24,7 @@ app = Flask(
     static_folder=os.path.join(BASE_DIR, "static")
 )
 
-# ----------------- MongoDB Setup -----------------
+# ----------------- MongoDB Database Setup -----------------
 MONGODB_URI = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI") or ""
 DB_NAME = os.getenv("MONGODB_DB_NAME", "sudharshini_ai")
 
@@ -47,18 +46,19 @@ def get_mongodb():
             connectTimeoutMS=4000,
             retryWrites=True
         )
-        # Test connection ping
         mongo_client.admin.command("ping")
         db = mongo_client[DB_NAME]
         messages_collection = db["chat_messages"]
-        messages_collection.create_index([("session_id", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING)])
+        try:
+            messages_collection.create_index([("session_id", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING)])
+        except Exception:
+            pass
         return db, messages_collection
     except Exception as e:
-        print(f"[MongoDB Notice] Connection unavailable: {e}")
+        print(f"[MongoDB Notice] {e}")
         return None, None
 
 def save_message_to_db(session_id, role, content, meta=None):
-    """Saves a message to MongoDB if connected."""
     _, col = get_mongodb()
     if col is not None:
         try:
@@ -72,11 +72,10 @@ def save_message_to_db(session_id, role, content, meta=None):
             col.insert_one(doc)
             return True
         except Exception as e:
-            print(f"[MongoDB Insert Error]: {e}")
+            print(f"[MongoDB Save Error]: {e}")
     return False
 
 def get_session_history_from_db(session_id, limit=40):
-    """Retrieves conversation history for a given session."""
     _, col = get_mongodb()
     if col is not None:
         try:
@@ -95,7 +94,6 @@ def get_session_history_from_db(session_id, limit=40):
     return None
 
 def clear_session_history_in_db(session_id):
-    """Deletes conversation history for a session."""
     _, col = get_mongodb()
     if col is not None:
         try:
@@ -105,10 +103,9 @@ def clear_session_history_in_db(session_id):
             print(f"[MongoDB Delete Error]: {e}")
     return False
 
-# In-memory fallback dictionary for when MongoDB is not configured or in local development
+# In-memory fallback
 in_memory_sessions = {}
 
-# System persona
 SYSTEM_PERSONA = (
     "You are Sudharshini AI, a brilliant, friendly, intelligent allrounder AI assistant. "
     "You excel at answering questions, programming, creative writing, document analysis, "
@@ -129,7 +126,6 @@ def extract_text_from_pdf(pdf_bytes):
         return f"[PDF Extraction Error: {str(e)}]"
 
 def optimize_image(image_bytes):
-    """Downscale and optimize image for fast visual inference."""
     try:
         with Image.open(io.BytesIO(image_bytes)) as img:
             if img.mode in ("RGBA", "P", "LA"):
@@ -144,23 +140,16 @@ def optimize_image(image_bytes):
         return image_bytes, "image/jpeg"
 
 def analyze_image_with_vision(image_bytes, mime_type, user_prompt, file_name="image"):
-    """Dedicated high-fidelity multimodal vision engine for diagrams, flowcharts, circuits, and photos."""
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not gemini_key:
-        return "Image analysis error: GEMINI_API_KEY is not configured in environment.", False
+        return "Image analysis error: GEMINI_API_KEY is not configured.", False
 
     try:
         client = genai.Client(api_key=gemini_key)
     except Exception as e:
         return f"Gemini client initialization failed: {str(e)}", False
 
-    vision_models = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
-        "gemini-3.5-flash-lite",
-        "gemini-3.5-flash"
-    ]
+    vision_models = ["gemini-3.6-flash", "gemini-3.7-flash", "gemini-flash-latest"]
 
     prompt_text = user_prompt or (
         "Please analyze and explain this image thoroughly. "
@@ -187,19 +176,42 @@ def analyze_image_with_vision(image_bytes, mime_type, user_prompt, file_name="im
 
     return f"Image vision processing error: {str(last_err)}", False
 
-@app.route("/")
-@app.route("/api")
-@app.route("/api/")
-@app.route("/api/index")
-@app.route("/api/index.py")
-def home():
+def run_gemini_fallback(user_message, messages_history=None):
+    """Executes Gemini fallback inference with multi-model failover."""
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not gemini_key:
+        return None
+    candidate_models = ["gemini-3.6-flash", "gemini-3.7-flash", "gemini-flash-latest", "gemini-3.5-flash-lite"]
+    try:
+        client = genai.Client(api_key=gemini_key)
+        contents = [f"System: {SYSTEM_PERSONA}"]
+        if messages_history:
+            for m in messages_history[-8:]:
+                if m.get("role") in ("user", "assistant"):
+                    prefix = "User: " if m["role"] == "user" else "Assistant: "
+                    contents.append(prefix + m["content"])
+        contents.append(f"User: {user_message}")
+        
+        for m in candidate_models:
+            try:
+                response = client.models.generate_content(
+                    model=m,
+                    contents=contents
+                )
+                if response and response.text:
+                    return response.text
+            except Exception as e:
+                print(f"[Gemini Model {m} failed]: {e}")
+                continue
+    except Exception as e:
+        print(f"[Gemini Fallback Error]: {e}")
+    return None
+
+# ----------------- Route Handlers -----------------
+def handle_home():
     return render_template("index.html")
 
-
-@app.route("/status", methods=["GET"])
-@app.route("/api/status", methods=["GET"])
-def get_status():
-    """Health and integration status endpoint."""
+def handle_status():
     _, col = get_mongodb()
     mongo_connected = col is not None
     return jsonify({
@@ -210,24 +222,26 @@ def get_status():
         "gemini_configured": bool(os.getenv("GEMINI_API_KEY"))
     })
 
-@app.route("/history", methods=["GET"])
-@app.route("/api/history", methods=["GET"])
-def get_history():
-    """Retrieve chat history for the active session from MongoDB or memory."""
+def handle_history():
     session_id = request.args.get("session_id", "default_session").strip()
     db_history = get_session_history_from_db(session_id)
     if db_history is not None:
         return jsonify({"history": db_history, "source": "mongodb"})
     
-    # Fallback to in-memory history
     mem_hist = in_memory_sessions.get(session_id, [])
-    # Strip system prompt if present
     filtered = [m for m in mem_hist if m.get("role") in ("user", "assistant")]
     return jsonify({"history": filtered, "source": "memory"})
 
-@app.route("/chat", methods=["POST"])
-@app.route("/api/chat", methods=["POST"])
-def chat():
+def handle_reset():
+    data = request.json or {}
+    session_id = (data.get("session_id") or "default_session").strip()
+    clear_session_history_in_db(session_id)
+    in_memory_sessions[session_id] = [
+        {"role": "system", "content": SYSTEM_PERSONA}
+    ]
+    return jsonify({"status": "reset", "session_id": session_id})
+
+def handle_chat():
     data = request.json or {}
     session_id = (data.get("session_id") or "default_session").strip()
     user_message = data.get("message", "").strip()
@@ -239,7 +253,6 @@ def chat():
     if not user_message and not file_b64:
         return jsonify({"reply": "Please type a message or upload an image/document."}), 400
 
-    # Parse base64 file if attached
     file_bytes = None
     mime_type = "image/jpeg"
     is_pdf = False
@@ -262,18 +275,17 @@ def chat():
         except Exception:
             file_bytes = None
 
-    # Load session history for context
     db_history = get_session_history_from_db(session_id)
     if db_history is not None:
         formatted_history = [{"role": "system", "content": SYSTEM_PERSONA}]
-        for item in db_history[-10:]: # last 10 messages for conversational context
+        for item in db_history[-10:]:
             formatted_history.append({"role": item["role"], "content": item["content"]})
     else:
         if session_id not in in_memory_sessions:
             in_memory_sessions[session_id] = [{"role": "system", "content": SYSTEM_PERSONA}]
         formatted_history = in_memory_sessions[session_id].copy()
 
-    # CASE 1: Image Upload -> Vision Pipeline
+    # Image Analysis
     if file_bytes and not is_pdf:
         opt_bytes, opt_mime = optimize_image(file_bytes)
         display_prompt = user_message or "Explain and analyze this uploaded image."
@@ -281,27 +293,24 @@ def chat():
         
         reply, success = analyze_image_with_vision(opt_bytes, opt_mime, user_message, file_name)
         if success:
-            # Persist to DB
             save_message_to_db(session_id, "user", user_entry, {"file_name": file_name, "type": "image"})
             save_message_to_db(session_id, "assistant", reply, {"provider": "gemini-vision"})
-            
-            # In-memory update
             if session_id in in_memory_sessions:
                 in_memory_sessions[session_id].append({"role": "user", "content": user_entry})
                 in_memory_sessions[session_id].append({"role": "assistant", "content": reply})
-                
             return jsonify({"reply": reply, "provider": "vision", "model": "gemini-vision"})
         else:
             return jsonify({"reply": reply, "error": True, "code": "vision_error"}), 500
 
-    # CASE 2: Text Chat & PDF Document Analysis
+    # Text & PDF Chat
     hist_text = user_message
     if not hist_text and is_pdf:
         hist_text = f"[User uploaded PDF: {file_name}]"
 
     groq_key = user_api_key if user_api_key else os.getenv("GROQ_API_KEY", "").strip()
 
-    if groq_key:
+    # Try Groq if key is present
+    if groq_key and len(groq_key) > 10:
         try:
             client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
             valid_groq_models = [
@@ -314,7 +323,6 @@ def chat():
             target_model = model_name if model_name in valid_groq_models else "openai/gpt-oss-120b"
 
             messages_payload = formatted_history.copy()
-
             if file_bytes and is_pdf:
                 pdf_text = extract_text_from_pdf(file_bytes)
                 prompt_text = user_message or "Summarize and analyze this PDF document in detail."
@@ -328,66 +336,47 @@ def chat():
                 messages=messages_payload,
             )
             reply = response.choices[0].message.content
-
-            # Persist to DB
             save_message_to_db(session_id, "user", hist_text, {"file_name": file_name if is_pdf else None})
             save_message_to_db(session_id, "assistant", reply, {"provider": "groq", "model": target_model})
-
-            # In-memory update
             if session_id in in_memory_sessions:
                 in_memory_sessions[session_id].append({"role": "user", "content": hist_text})
                 in_memory_sessions[session_id].append({"role": "assistant", "content": reply})
-
             return jsonify({"reply": reply, "provider": "groq", "model": target_model})
         except Exception as groq_err:
-            groq_err_str = str(groq_err)
-            
-            # Fallback to Gemini if configured
-            gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
-            if gemini_key:
-                try:
-                    g_client = genai.Client(api_key=gemini_key)
-                    g_response = g_client.models.generate_content(
-                        model="gemini-2.0-flash",
-                        contents=[f"System: {SYSTEM_PERSONA}\n\nUser: {user_message}"]
-                    )
-                    reply = g_response.text
-                    save_message_to_db(session_id, "user", hist_text)
-                    save_message_to_db(session_id, "assistant", reply, {"provider": "gemini-fallback"})
-                    return jsonify({"reply": reply, "provider": "gemini-fallback"})
-                except Exception:
-                    pass
+            print(f"[Groq Error, switching to Gemini]: {groq_err}")
 
-            if "rate_limit_exceeded" in groq_err_str or "429" in groq_err_str:
-                reply = "⚠️ Rate limit reached. Please wait a few moments and click 🔄 Retry."
-                return jsonify({"reply": reply, "error": True, "code": "rate_limit_exhausted"}), 429
-            return jsonify({"reply": f"Groq Error: {groq_err_str}", "error": True, "code": "api_error"}), 500
+    # Fallback to Gemini 3.6 Flash
+    gemini_reply = run_gemini_fallback(hist_text, formatted_history)
+    if gemini_reply:
+        save_message_to_db(session_id, "user", hist_text)
+        save_message_to_db(session_id, "assistant", gemini_reply, {"provider": "gemini-3.6-flash"})
+        if session_id in in_memory_sessions:
+            in_memory_sessions[session_id].append({"role": "user", "content": hist_text})
+            in_memory_sessions[session_id].append({"role": "assistant", "content": gemini_reply})
+        return jsonify({"reply": gemini_reply, "provider": "gemini", "model": "gemini-3.6-flash"})
 
-    return jsonify({"reply": "API key configuration missing. Please ensure GROQ_API_KEY is set in Vercel or your local .env file.", "error": True}), 400
+    return jsonify({
+        "reply": "Could not connect to AI services. Please verify your GEMINI_API_KEY or GROQ_API_KEY in Vercel Environment Variables.",
+        "error": True
+    }), 500
 
-@app.route("/reset", methods=["POST"])
-@app.route("/api/reset", methods=["POST"])
-def reset():
-    """Clear conversation history for the session."""
-    data = request.json or {}
-    session_id = (data.get("session_id") or "default_session").strip()
+# ----------------- Unified Catch-All Router -----------------
+@app.route("/", defaults={"subpath": ""}, methods=["GET", "POST", "OPTIONS"])
+@app.route("/<path:subpath>", methods=["GET", "POST", "OPTIONS"])
+def unified_router(subpath=""):
+    # Strip any trailing slashes or query parameters
+    p = subpath.lower().strip("/").split("?")[0]
     
-    # Delete from DB
-    clear_session_history_in_db(session_id)
-    
-    # Delete from memory
-    in_memory_sessions[session_id] = [
-        {"role": "system", "content": SYSTEM_PERSONA}
-    ]
-    return jsonify({"status": "reset", "session_id": session_id})
-
-@app.errorhandler(404)
-def handle_404(e):
-    """Fallback handler to ensure Vercel page rewrites render index.html instead of 404."""
-    p = request.path or ""
-    if request.method == "GET" and not (p.startswith("/api") or p.startswith("/chat") or p.startswith("/history") or p.startswith("/status") or p.startswith("/reset")):
-        return render_template("index.html")
-    return jsonify({"error": "Not Found", "path": request.path}), 404
+    if p in ("api/status", "status"):
+        return handle_status()
+    elif p in ("api/history", "history"):
+        return handle_history()
+    elif p in ("api/reset", "reset"):
+        return handle_reset()
+    elif p in ("api/chat", "chat") or request.method == "POST":
+        return handle_chat()
+    else:
+        return handle_home()
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))

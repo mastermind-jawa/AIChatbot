@@ -592,8 +592,10 @@
             <div class="brand-text">
                 <div class="brand-title">Sudharshini AI</div>
                 <div class="brand-status">
-                    <span class="status-dot"></span>
-                    <span>Allrounder • Groq & Vision Active</span>
+                    <span class="status-dot" id="system-status-dot"></span>
+                    <span id="system-status-text">Active</span>
+                    <span style="opacity: 0.35;">•</span>
+                    <span id="db-status-badge" style="font-size:11px; color:#93c5fd;">🍃 Checking DB...</span>
                 </div>
             </div>
         </div>
@@ -832,8 +834,54 @@ function addMessage(text, sender, isError = false, fileObj = null, isTyping = fa
     return row;
 }
 
+// Session management
+let sessionId = localStorage.getItem('sudharshini_session_id');
+if (!sessionId) {
+    sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+    localStorage.setItem('sudharshini_session_id', sessionId);
+}
+
 let lastUserPrompt = '';
 let lastUserFileData = null;
+
+async function checkBackendStatus() {
+    try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        const dbBadge = document.getElementById('db-status-badge');
+        if (dbBadge) {
+            if (data.mongodb_connected) {
+                dbBadge.innerHTML = '🍃 <span style="color:#34d399; font-weight:600;">MongoDB Connected</span>';
+            } else {
+                dbBadge.innerHTML = '🍃 <span style="color:#94a3b8;" title="Add MONGODB_URI in environment variables to persist chats">Session Mode</span>';
+            }
+        }
+    } catch (e) {
+        const dbBadge = document.getElementById('db-status-badge');
+        if (dbBadge) dbBadge.innerHTML = '🍃 <span style="color:#94a3b8;">Local Mode</span>';
+    }
+}
+
+async function loadChatHistory() {
+    try {
+        const res = await fetch('/history?session_id=' + encodeURIComponent(sessionId));
+        const data = await res.json();
+        if (data.history && data.history.length > 0) {
+            chatBox.innerHTML = '';
+            for (const item of data.history) {
+                const isUser = item.role === 'user';
+                const fileObj = item.meta && item.meta.file_name ? { name: item.meta.file_name, isPdf: item.meta.file_name.endsWith('.pdf') } : null;
+                addMessage(item.content, isUser ? 'user' : 'bot', false, fileObj);
+            }
+        }
+    } catch (e) {
+        console.warn('Could not load chat history:', e);
+    }
+}
+
+// Initialize status check and history restore
+checkBackendStatus();
+loadChatHistory();
 
 async function sendMessage() {
     const text = input.value.trim();
@@ -858,6 +906,7 @@ async function sendMessage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                session_id: sessionId,
                 message: text,
                 file: currentFile.b64,
                 file_name: currentFile.name,
@@ -900,6 +949,7 @@ async function regenerateLastMessage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                session_id: sessionId,
                 message: lastUserPrompt,
                 file: lastUserFileData ? lastUserFileData.b64 : null,
                 file_name: lastUserFileData ? lastUserFileData.name : '',
@@ -926,7 +976,11 @@ async function regenerateLastMessage() {
 }
 
 async function resetChat() {
-    await fetch('/reset', { method: 'POST' });
+    await fetch('/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+    });
     lastUserPrompt = '';
     lastUserFileData = null;
     chatBox.innerHTML = '';

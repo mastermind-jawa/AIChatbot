@@ -3,3 +3,6 @@ openai
 python-dotenv
 google-genai
 pypdf
+Pillow
+pymongo
+dnspython

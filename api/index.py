@@ -1,5 +1,6 @@
 import sys
 import os
+from urllib.parse import parse_qs, urlencode
 
 # Ensure the root project directory is in python path
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -11,30 +12,31 @@ from app import app
 class VercelPathMiddleware:
     """
     Normalizes PATH_INFO when Vercel rewrites requests to /api/index.py.
-    Uses HTTP_X_MATCHED_PATH to recover the original request path (e.g. /api/status, /chat, /history).
+    Uses __path query parameter passed by vercel.json rewrite to restore the exact requested route.
     """
     def __init__(self, wsgi_app):
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        matched_path = (
-            environ.get("HTTP_X_MATCHED_PATH")
-            or environ.get("HTTP_X_VERCEL_PATH")
-            or environ.get("HTTP_X_FORWARDED_URI")
-        )
-        if matched_path:
-            # Strip query string from matched_path if present
-            if "?" in matched_path:
-                matched_path = matched_path.split("?", 1)[0]
-            environ["PATH_INFO"] = matched_path
+        query = environ.get("QUERY_STRING", "")
+        if "__path" in query:
+            params = parse_qs(query, keep_blank_values=True)
+            if "__path" in params:
+                val = params.pop("__path")[0] if params.get("__path") else ""
+                target_path = "/" + val.lstrip("/")
+                environ["PATH_INFO"] = target_path
+                environ["QUERY_STRING"] = urlencode(params, doseq=True)
         else:
-            path = environ.get("PATH_INFO", "")
-            if path in ("/api/index.py", "/api/index", "/api", "/api/"):
-                environ["PATH_INFO"] = "/"
-            elif path.startswith("/api/index.py/"):
-                environ["PATH_INFO"] = path[len("/api/index.py"):]
-            elif path.startswith("/api/index/"):
-                environ["PATH_INFO"] = path[len("/api/index"):]
+            matched_path = (
+                environ.get("HTTP_X_MATCHED_PATH")
+                or environ.get("HTTP_X_VERCEL_PATH")
+                or environ.get("HTTP_X_FORWARDED_URI")
+            )
+            if matched_path:
+                if "?" in matched_path:
+                    matched_path = matched_path.split("?", 1)[0]
+                environ["PATH_INFO"] = matched_path
+
         return self.wsgi_app(environ, start_response)
 
 app.wsgi_app = VercelPathMiddleware(app.wsgi_app)

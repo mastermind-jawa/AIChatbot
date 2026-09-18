@@ -195,13 +195,6 @@ def analyze_image_with_vision(image_bytes, mime_type, user_prompt, file_name="im
 def home():
     return render_template("index.html")
 
-@app.route("/debug-env", methods=["GET"])
-def debug_env():
-    safe_env = {k: str(v) for k, v in request.environ.items() if isinstance(v, (str, int, float, bool)) and not any(s in k.upper() for s in ["KEY", "SECRET", "PASS", "URI", "AUTH", "COOKIE"])}
-    return jsonify({
-        "path": request.path,
-        "environ": safe_env
-    })
 
 @app.route("/status", methods=["GET"])
 @app.route("/api/status", methods=["GET"])

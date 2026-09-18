@@ -382,8 +382,9 @@ def reset():
 
 @app.errorhandler(404)
 def handle_404(e):
-    """Fallback handler to ensure Vercel rewrites render index.html instead of 404."""
-    if request.method == "GET":
+    """Fallback handler to ensure Vercel page rewrites render index.html instead of 404."""
+    p = request.path or ""
+    if request.method == "GET" and not (p.startswith("/api") or p.startswith("/chat") or p.startswith("/history") or p.startswith("/status") or p.startswith("/reset")):
         return render_template("index.html")
     return jsonify({"error": "Not Found", "path": request.path}), 404
 

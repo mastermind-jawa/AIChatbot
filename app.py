@@ -188,9 +188,14 @@ def analyze_image_with_vision(image_bytes, mime_type, user_prompt, file_name="im
     return f"Image vision processing error: {str(last_err)}", False
 
 @app.route("/")
+@app.route("/api")
+@app.route("/api/")
+@app.route("/api/index")
+@app.route("/api/index.py")
 def home():
     return render_template("index.html")
 
+@app.route("/status", methods=["GET"])
 @app.route("/api/status", methods=["GET"])
 def get_status():
     """Health and integration status endpoint."""
@@ -205,6 +210,7 @@ def get_status():
     })
 
 @app.route("/history", methods=["GET"])
+@app.route("/api/history", methods=["GET"])
 def get_history():
     """Retrieve chat history for the active session from MongoDB or memory."""
     session_id = request.args.get("session_id", "default_session").strip()
@@ -219,6 +225,7 @@ def get_history():
     return jsonify({"history": filtered, "source": "memory"})
 
 @app.route("/chat", methods=["POST"])
+@app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.json or {}
     session_id = (data.get("session_id") or "default_session").strip()
@@ -358,6 +365,7 @@ def chat():
     return jsonify({"reply": "API key configuration missing. Please ensure GROQ_API_KEY is set in Vercel or your local .env file.", "error": True}), 400
 
 @app.route("/reset", methods=["POST"])
+@app.route("/api/reset", methods=["POST"])
 def reset():
     """Clear conversation history for the session."""
     data = request.json or {}
@@ -371,6 +379,13 @@ def reset():
         {"role": "system", "content": SYSTEM_PERSONA}
     ]
     return jsonify({"status": "reset", "session_id": session_id})
+
+@app.errorhandler(404)
+def handle_404(e):
+    """Fallback handler to ensure Vercel rewrites render index.html instead of 404."""
+    if request.method == "GET":
+        return render_template("index.html")
+    return jsonify({"error": "Not Found", "path": request.path}), 404
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))

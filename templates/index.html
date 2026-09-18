@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f19">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sudharshini AI">
+<title>Sudharshini AI — Ultra-Fast Groq Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Markdown and Code Syntax Highlighting -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+<style>
+    :root {
+        --bg-primary: #0b0f19;
+        --bg-card: rgba(17, 24, 39, 0.95);
+        --bg-header: rgba(15, 23, 42, 0.88);
+        --accent-blue: #3b82f6;
+        --accent-indigo: #6366f1;
+        --accent-glow: rgba(99, 102, 241, 0.25);
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --border-glass: rgba(255, 255, 255, 0.08);
+        --bot-bubble: rgba(30, 41, 59, 0.9);
+        --user-bubble: linear-gradient(135deg, #2563eb, #4f46e5);
+    }
+
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+        height: 100%;
+        height: 100dvh;
+        width: 100%;
+        background-color: var(--bg-primary);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: var(--text-main);
+        overflow: hidden;
+    }
+
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0b0f19 75%);
+    }
+
+    /* Container: Desktop Centered, Mobile Fullscreen Edge-to-Edge */
+    .app-container {
+        width: 100%;
+        max-width: 760px;
+        height: min(900px, 96vh);
+        background: var(--bg-card);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--border-glass);
+        border-radius: 24px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 40px var(--accent-glow);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* Header */
+    .app-header {
+        background: var(--bg-header);
+        border-bottom: 1px solid var(--border-glass);
+        padding: 14px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+        padding-top: max(14px, env(safe-area-inset-top));
+    }
+
+    .brand-section {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .brand-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #6366f1, #3b82f6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        flex-shrink: 0;
+    }
+
+    .brand-text {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .brand-title {
+        font-weight: 800;
+        font-size: 17px;
+        letter-spacing: -0.3px;
+        background: linear-gradient(90deg, #60a5fa, #c084fc);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .brand-status {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        color: #94a3b8;
+        font-weight: 500;
+    }
+
+    .status-dot {
+        width: 7px;
+        height: 7px;
+        background: #10b981;
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 8px #10b981;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .header-btn {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border-glass);
+        color: #e2e8f0;
+        padding: 7px 11px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.2s ease;
+    }
+
+    .header-btn:hover, .header-btn:active {
+        background: rgba(255, 255, 255, 0.14);
+        color: #ffffff;
+    }
+
+    /* Chat Messages Box */
+    .chat-box {
+        flex: 1;
+        padding: 18px 16px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        scroll-behavior: smooth;
+    }
+
+    /* Custom Scrollbar */
+    .chat-box::-webkit-scrollbar {
+        width: 5px;
+    }
+    .chat-box::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+    }
+
+    .message-row {
+        display: flex;
+        flex-direction: column;
+        animation: fadeInMsg 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeInMsg {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message-row.user { align-items: flex-end; }
+    .message-row.bot { align-items: flex-start; }
+
+    .message {
+        max-width: 88%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        font-size: 14.5px;
+        line-height: 1.6;
+        word-break: break-word;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .message-row.user .message {
+        background: var(--user-bubble);
+        color: #ffffff;
+        border-bottom-right-radius: 4px;
+    }
+
+    .message-row.bot .message {
+        background: var(--bot-bubble);
+        color: #f1f5f9;
+        border: 1px solid var(--border-glass);
+        border-bottom-left-radius: 4px;
+    }
+
+    /* Markdown Inside Bot Messages */
+    .markdown-body p { margin-bottom: 8px; }
+    .markdown-body p:last-child { margin-bottom: 0; }
+    .markdown-body ul, .markdown-body ol { margin-left: 20px; margin-bottom: 8px; }
+    .markdown-body li { margin-bottom: 3px; }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+        margin: 10px 0 6px 0;
+        color: #60a5fa;
+        font-weight: 700;
+    }
+    .markdown-body pre {
+        background: #070d19;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 12px;
+        margin: 10px 0;
+        overflow-x: auto;
+        font-size: 13px;
+        position: relative;
+    }
+    .markdown-body code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 13px;
+        background: rgba(15, 23, 42, 0.8);
+        padding: 2px 6px;
+        border-radius: 5px;
+        color: #93c5fd;
+    }
+    .markdown-body pre code {
+        background: transparent;
+        padding: 0;
+        color: inherit;
+    }
+    .markdown-body table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 10px 0;
+        font-size: 13px;
+        display: block;
+        overflow-x: auto;
+    }
+    .markdown-body th, .markdown-body td {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 6px 10px;
+        text-align: left;
+    }
+    .markdown-body th { background: rgba(255, 255, 255, 0.08); }
+
+    /* Media Attachments */
+    .msg-img {
+        max-width: 100%;
+        max-height: 240px;
+        border-radius: 12px;
+        margin-bottom: 8px;
+        display: block;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .pdf-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 8px 12px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #f8fafc;
+    }
+
+    /* Error Card */
+    .error-card {
+        background: rgba(239, 68, 68, 0.12) !important;
+        border: 1px solid rgba(239, 68, 68, 0.4) !important;
+        color: #fca5a5 !important;
+        border-radius: 14px;
+        padding: 14px;
+    }
+
+    /* Input Bar */
+    .input-container {
+        border-top: 1px solid var(--border-glass);
+        background: var(--bg-header);
+        padding: 10px 14px max(12px, env(safe-area-inset-bottom)) 14px;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+    }
+
+    .preview-bar {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 12px;
+        background: rgba(30, 41, 59, 0.95);
+        border-radius: 12px;
+        margin-bottom: 8px;
+        border: 1px solid var(--border-glass);
+    }
+    .preview-bar.active { display: flex; }
+    .preview-thumb {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        object-fit: cover;
+    }
+    .pdf-icon-badge {
+        font-size: 20px;
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(239, 68, 68, 0.2);
+        border-radius: 8px;
+    }
+    .preview-info {
+        flex: 1;
+        font-size: 12px;
+        color: #cbd5e1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .remove-file-btn {
+        background: rgba(239, 68, 68, 0.25);
+        color: #ef4444;
+        border: none;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .input-area {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .upload-btn {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--border-glass);
+        color: #60a5fa;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 19px;
+        flex-shrink: 0;
+        transition: all 0.2s;
+    }
+    .upload-btn:hover, .upload-btn:active {
+        background: rgba(59, 130, 246, 0.2);
+        transform: scale(1.05);
+    }
+
+    .input-area input[type="text"] {
+        flex: 1;
+        height: 44px;
+        padding: 0 16px;
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 22px;
+        outline: none;
+        font-size: 16px; /* Prevents auto-zoom on iOS */
+        color: #ffffff;
+        transition: border-color 0.2s;
+    }
+    .input-area input[type="text"]:focus {
+        border-color: #60a5fa;
+        background: rgba(30, 41, 59, 0.9);
+    }
+    .input-area input[type="text"]::placeholder {
+        color: #64748b;
+        font-size: 14.5px;
+    }
+
+    .send-btn {
+        background: linear-gradient(135deg, #3b82f6, #4f46e5);
+        color: white;
+        border: none;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+        transition: all 0.2s;
+    }
+    .send-btn:hover { transform: scale(1.05); }
+    .send-btn:active { transform: scale(0.95); }
+    .send-btn:disabled {
+        background: rgba(148, 163, 184, 0.2);
+        color: #475569;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+    }
+    .send-btn svg {
+        width: 19px;
+        height: 19px;
+        fill: currentColor;
+        transform: translateX(1px);
+    }
+
+    /* Settings Modal */
+    .modal-overlay {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(11, 15, 25, 0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        padding: 16px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-content {
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 20px;
+        width: 100%;
+        max-width: 400px;
+        padding: 22px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+    }
+    .modal-header h3 { font-size: 17px; font-weight: 700; color: #f8fafc; }
+    .close-btn {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        font-size: 22px;
+        line-height: 1;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; }
+    .form-group select, .form-group input {
+        width: 100%;
+        padding: 11px 14px;
+        background: #0b0f19;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        color: white;
+        font-size: 14px;
+        outline: none;
+    }
+    .form-group select:focus, .form-group input:focus {
+        border-color: #3b82f6;
+    }
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    .save-btn {
+        background: linear-gradient(135deg, #3b82f6, #4f46e5);
+        color: white;
+        border: none;
+        padding: 11px 20px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 13.5px;
+        cursor: pointer;
+    }
+
+    /* Typing Dots Animation */
+    .typing-dots {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+        padding: 4px 2px;
+    }
+    .typing-dots span {
+        width: 6px;
+        height: 6px;
+        background: #60a5fa;
+        border-radius: 50%;
+        animation: typingBlink 1.4s infinite both;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typingBlink {
+        0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+        40% { opacity: 1; transform: scale(1.2); }
+    }
+
+    /* MOBILE PHONE SPECIFIC OPTIMIZATION */
+    @media (max-width: 640px) {
+        body {
+            padding: 0;
+            background: var(--bg-primary);
+        }
+        .app-container {
+            width: 100vw;
+            height: 100dvh;
+            max-width: 100vw;
+            border-radius: 0;
+            border: none;
+            box-shadow: none;
+        }
+        .app-header {
+            padding: 12px 14px;
+            padding-top: max(12px, env(safe-area-inset-top));
+        }
+        .brand-title {
+            font-size: 16px;
+        }
+        .header-btn span.btn-label {
+            display: none; /* Hide button text labels on small screens, keep icons */
+        }
+        .header-btn {
+            padding: 7px 9px;
+            font-size: 14px;
+        }
+        .message {
+            max-width: 92%;
+            font-size: 15px;
+            padding: 11px 14px;
+        }
+        .chat-box {
+            padding: 14px 12px;
+            gap: 12px;
+        }
+        .input-container {
+            padding: 8px 10px max(10px, env(safe-area-inset-bottom)) 10px;
+        }
+        .input-area input[type="text"] {
+            font-size: 16px; /* Prevents auto zoom */
+            padding: 0 14px;
+        }
+    }
+</style>
+</head>
+<body>
+
+<div class="app-container" id="drop-zone">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="brand-section">
+            <div class="brand-avatar">✨</div>
+            <div class="brand-text">
+                <div class="brand-title">Sudharshini AI</div>
+                <div class="brand-status">
+                    <span class="status-dot"></span>
+                    <span>Allrounder • Groq & Vision Active</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="header-btn" onclick="regenerateLastMessage()" title="Retry response">
+                🔄 <span class="btn-label">Retry</span>
+            </button>
+            <button class="header-btn" onclick="openSettings()" title="Settings">
+                ⚙️ <span class="btn-label">Settings</span>
+            </button>
+            <button class="header-btn" onclick="resetChat()" title="Reset chat">
+                🗑️ <span class="btn-label">Reset</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Chat Message Feed -->
+    <main class="chat-box" id="chat-box">
+        <div class="message-row bot">
+            <div class="message">
+                ✨ Hi! I'm <strong>Sudharshini AI</strong>, your allrounder AI assistant! Powered by ultra-fast <strong>Groq LPU</strong> for general chat & code, plus deep <strong>Multimodal Vision</strong> to analyze diagrams, schematics, circuits, flowcharts & photos. Ask me anything or upload an image!
+            </div>
+        </div>
+    </main>
+
+    <!-- Input Bar -->
+    <footer class="input-container">
+        <!-- Attachment Preview Bar -->
+        <div class="preview-bar" id="preview-bar">
+            <div id="preview-icon-container"></div>
+            <div class="preview-info" id="preview-info">File attached</div>
+            <button class="remove-file-btn" onclick="removeAttachedFile()">&times;</button>
+        </div>
+
+        <div class="input-area">
+            <button class="upload-btn" onclick="triggerFileUpload()" title="Attach PDF or Image">📎</button>
+            <input type="file" id="file-upload" accept="image/*,.pdf,application/pdf" style="display:none" onchange="handleFileSelect(event)">
+            
+            <input type="text" id="user-input" placeholder="Message Sudharshini AI..." onkeypress="handleKeyPress(event)" autocomplete="off">
+            
+            <button class="send-btn" id="send-btn" onclick="sendMessage()" title="Send Message">
+                <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+        </div>
+    </footer>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal" onclick="if(event.target===this)closeSettings()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Sudharshini AI Settings</h3>
+                <button class="close-btn" onclick="closeSettings()">&times;</button>
+            </div>
+            
+            <div class="form-group">
+                <label>AI Provider</label>
+                <select id="provider-select" disabled>
+                    <option value="groq" selected>⚡ Groq LPU (Ultra-Fast Hardware Engine)</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="api-key-group">
+                <label id="api-key-label">Groq API Key (Optional — configured in .env)</label>
+                <input type="password" id="api-key-input" placeholder="Custom gsk_... key or leave blank">
+            </div>
+
+            <div class="form-group">
+                <label>Groq Model</label>
+                <select id="model-select">
+                    <option value="openai/gpt-oss-120b">Groq GPT-OSS 120B (Recommended)</option>
+                    <option value="groq/compound">Groq Compound</option>
+                    <option value="groq/compound-mini">Groq Compound Mini</option>
+                    <option value="qwen/qwen3.8-27b">Qwen 3.8 27B</option>
+                    <option value="openai/gpt-oss-20b">Groq GPT-OSS 20B</option>
+                </select>
+            </div>
+
+            <div class="modal-footer">
+                <button class="save-btn" onclick="saveSettings()">Save & Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const chatBox = document.getElementById('chat-box');
+const input = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+const fileInput = document.getElementById('file-upload');
+const previewBar = document.getElementById('preview-bar');
+const previewIconContainer = document.getElementById('preview-icon-container');
+const previewInfo = document.getElementById('preview-info');
+
+let attachedFile = { b64: null, name: '', isPdf: false };
+
+let settings = {
+    provider: 'groq',
+    apiKey: localStorage.getItem('chatbot_apikey') || '',
+    model: localStorage.getItem('chatbot_model') || 'openai/gpt-oss-120b'
+};
+
+// Enforce Groq only
+localStorage.setItem('chatbot_provider', 'groq');
+const validGroqModels = ['openai/gpt-oss-120b', 'groq/compound', 'groq/compound-mini', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'];
+if (!validGroqModels.includes(settings.model)) {
+    settings.model = 'openai/gpt-oss-120b';
+    localStorage.setItem('chatbot_model', settings.model);
+}
+
+function triggerFileUpload() {
+    fileInput.click();
+}
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) processSelectedFile(file);
+}
+
+function processSelectedFile(file) {
+    const reader = new FileReader();
+    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+
+    reader.onload = function(e) {
+        attachedFile.b64 = e.target.result;
+        attachedFile.name = file.name;
+        attachedFile.isPdf = isPdf;
+
+        previewIconContainer.innerHTML = isPdf 
+            ? `<div class="pdf-icon-badge">📄</div>`
+            : `<img class="preview-thumb" src="${attachedFile.b64}" alt="Thumb">`;
+        
+        previewInfo.textContent = file.name;
+        previewBar.classList.add('active');
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeAttachedFile() {
+    attachedFile = { b64: null, name: '', isPdf: false };
+    fileInput.value = '';
+    previewBar.classList.remove('active');
+}
+
+// Support Paste (Ctrl+V) file attachment
+document.addEventListener('paste', function(e) {
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (let item of items) {
+        if (item.type.indexOf('image') !== -1 || item.type === 'application/pdf') {
+            const file = item.getAsFile();
+            processSelectedFile(file);
+            break;
+        }
+    }
+});
+
+function openSettings() {
+    document.getElementById('api-key-input').value = settings.apiKey;
+    document.getElementById('model-select').value = settings.model;
+    document.getElementById('settings-modal').classList.add('active');
+}
+
+function closeSettings() {
+    document.getElementById('settings-modal').classList.remove('active');
+}
+
+function saveSettings() {
+    settings.provider = 'groq';
+    settings.apiKey = document.getElementById('api-key-input').value.trim();
+    settings.model = document.getElementById('model-select').value;
+
+    localStorage.setItem('chatbot_provider', 'groq');
+    localStorage.setItem('chatbot_apikey', settings.apiKey);
+    localStorage.setItem('chatbot_model', settings.model);
+
+    closeSettings();
+}
+
+function renderBotMarkdown(container, markdownText) {
+    if (window.marked) {
+        container.innerHTML = marked.parse(markdownText);
+        if (window.hljs) {
+            container.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+        }
+    } else {
+        container.textContent = markdownText;
+    }
+}
+
+function addMessage(text, sender, isError = false, fileObj = null, isTyping = false) {
+    const row = document.createElement('div');
+    row.className = `message-row ${sender}`;
+
+    const div = document.createElement('div');
+    div.className = 'message';
+
+    if (isError) {
+        div.classList.add('error-card');
+        div.innerHTML = `<div>${text.replace(/\n/g, '<br>')}</div>
+                         <div style="margin-top:10px; display:flex; gap:8px;">
+                             <button onclick="regenerateLastMessage()" style="background:#3b82f6; color:white; border:none; padding:8px 14px; border-radius:8px; cursor:pointer; font-weight:600; font-size:12px;">🔄 Try Again</button>
+                             <button onclick="openSettings()" style="background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.2); padding:8px 14px; border-radius:8px; cursor:pointer; font-weight:600; font-size:12px;">⚙️ Check Settings</button>
+                         </div>`;
+    } else if (isTyping) {
+        div.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
+    } else {
+        if (fileObj && fileObj.b64) {
+            if (fileObj.isPdf) {
+                const pdfCard = document.createElement('div');
+                pdfCard.className = 'pdf-card';
+                pdfCard.innerHTML = `<span>📄 Document: ${fileObj.name}</span>`;
+                div.appendChild(pdfCard);
+            } else {
+                const img = document.createElement('img');
+                img.src = fileObj.b64;
+                img.className = 'msg-img';
+                div.appendChild(img);
+            }
+        }
+        if (text) {
+            const contentDiv = document.createElement('div');
+            contentDiv.className = sender === 'bot' ? 'markdown-body' : '';
+            if (sender === 'bot') {
+                renderBotMarkdown(contentDiv, text);
+            } else {
+                contentDiv.textContent = text;
+            }
+            div.appendChild(contentDiv);
+        }
+    }
+
+    row.appendChild(div);
+    chatBox.appendChild(row);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    return row;
+}
+
+let lastUserPrompt = '';
+let lastUserFileData = null;
+
+async function sendMessage() {
+    const text = input.value.trim();
+    const currentFile = { ...attachedFile };
+
+    if (!text && !currentFile.b64) return;
+
+    lastUserPrompt = text;
+    lastUserFileData = currentFile.b64 ? currentFile : null;
+
+    addMessage(text, 'user', false, currentFile);
+
+    // Clear input
+    input.value = '';
+    removeAttachedFile();
+    sendBtn.disabled = true;
+
+    const thinkingRow = addMessage('', 'bot', false, null, true);
+
+    try {
+        const res = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: text,
+                file: currentFile.b64,
+                file_name: currentFile.name,
+                provider: 'groq',
+                api_key: settings.apiKey,
+                model: settings.model
+            })
+        });
+        const data = await res.json();
+        
+        thinkingRow.remove();
+        if (data.error) {
+            addMessage(data.reply, 'bot', true);
+        } else {
+            addMessage(data.reply, 'bot', false);
+        }
+    } catch (err) {
+        thinkingRow.remove();
+        addMessage('Error: Could not reach Sudharshini AI backend.', 'bot', true);
+    } finally {
+        sendBtn.disabled = false;
+        input.focus();
+    }
+}
+
+async function regenerateLastMessage() {
+    if (!lastUserPrompt && (!lastUserFileData || !lastUserFileData.b64)) {
+        return;
+    }
+    const botRows = chatBox.querySelectorAll('.message-row.bot');
+    if (botRows.length > 0) {
+        botRows[botRows.length - 1].remove();
+    }
+
+    sendBtn.disabled = true;
+    const thinkingRow = addMessage('', 'bot', false, null, true);
+
+    try {
+        const res = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: lastUserPrompt,
+                file: lastUserFileData ? lastUserFileData.b64 : null,
+                file_name: lastUserFileData ? lastUserFileData.name : '',
+                provider: 'groq',
+                api_key: settings.apiKey,
+                model: settings.model
+            })
+        });
+        const data = await res.json();
+
+        thinkingRow.remove();
+        if (data.error) {
+            addMessage(data.reply, 'bot', true);
+        } else {
+            addMessage(data.reply, 'bot', false);
+        }
+    } catch (err) {
+        thinkingRow.remove();
+        addMessage('Error: Could not reach Sudharshini AI backend.', 'bot', true);
+    } finally {
+        sendBtn.disabled = false;
+        input.focus();
+    }
+}
+
+async function resetChat() {
+    await fetch('/reset', { method: 'POST' });
+    lastUserPrompt = '';
+    lastUserFileData = null;
+    chatBox.innerHTML = '';
+    addMessage("✨ Hi! I'm **Sudharshini AI**, your allrounder AI assistant! Powered by ultra-fast **Groq LPU** for general chat & code, plus deep **Multimodal Vision** to analyze diagrams, schematics, circuits, flowcharts & photos. Ask me anything or upload an image!", 'bot');
+}
+
+function handleKeyPress(e) {
+    if (e.key === 'Enter') sendMessage();
+}
+</script>
+
+</body>
+</html>

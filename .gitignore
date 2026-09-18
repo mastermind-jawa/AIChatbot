@@ -1,0 +1,27 @@
+# Environment variables (contains sensitive API keys)
+.env
+
+# Executables & large binaries
+*.exe
+cloudflared.exe
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# IDE / Editor folders
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Antigravity / Gemini scratch & agent files
+.agents/
+.gemini/
